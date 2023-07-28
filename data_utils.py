@@ -259,7 +259,7 @@ class DistributedBucketSampler(torch.utils.data.distributed.DistributedSampler):
 
     def __len__(self):
         return self.num_samples // self.batch_size
-import utils
+# import utils
 from torch.utils.data import DataLoader
 if __name__ == "__main__":
     hps = utils.get_hparams()
@@ -271,7 +271,7 @@ if __name__ == "__main__":
         num_replicas=1,
         rank=0,
         shuffle=True)
-    collate_fn = TextAudioSpeakerCollate(hps)
+    collate_fn = TextAudioCollate(hps)
     train_loader = DataLoader(train_dataset, num_workers=1, shuffle=False, pin_memory=True,
         collate_fn=collate_fn, batch_sampler=train_sampler)
 
