@@ -8,7 +8,7 @@ import torch.utils.data
 import qvc_utils
 import commons 
 from mel_processing import spectrogram_torch, spec_to_mel_torch
-from utils import load_wav_to_torch, load_filepaths_and_text, transform
+from qvc_utils import load_wav_to_torch, load_filepaths_and_text, transform
 #import h5py
 
 
