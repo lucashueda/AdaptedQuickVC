@@ -665,7 +665,7 @@ class Multistream_iSTFT_Generator(torch.nn.Module):
         resblock = modules.ResBlock1 if resblock == '1' else modules.ResBlock2
 
         self.f0_upsamp = torch.nn.Upsample(scale_factor=np.prod(upsample_rates))
-        self.energy_upsamp = torch.nn.Upsample(scale_factor=np.prod(upsample_rates]))
+        self.energy_upsamp = torch.nn.Upsample(scale_factor=np.prod(upsample_rates))
         self.m_source = SourceModuleHnNSF(
             sampling_rate=sampling_rate,
             harmonic_num=8)
