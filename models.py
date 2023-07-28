@@ -664,7 +664,7 @@ class Multistream_iSTFT_Generator(torch.nn.Module):
         self.conv_pre = weight_norm(Conv1d(initial_channel, upsample_initial_channel, 7, 1, padding=3))
         resblock = modules.ResBlock1 if resblock == '1' else modules.ResBlock2
 
-        self.f0_upsamp = torch.nn.Upsample(scale_factor=np.prod(upsample_rates]))
+        self.f0_upsamp = torch.nn.Upsample(scale_factor=np.prod(upsample_rates))
         self.energy_upsamp = torch.nn.Upsample(scale_factor=np.prod(upsample_rates]))
         self.m_source = SourceModuleHnNSF(
             sampling_rate=sampling_rate,
