@@ -3,6 +3,7 @@ import json
 import argparse
 import itertools
 import math
+import multiprocessing
 import torch
 from torch import nn, optim
 from torch.nn import functional as F
@@ -77,11 +78,14 @@ def run(rank, n_gpus, hps):
       rank=rank,
       shuffle=True)
   collate_fn = TextAudioCollate()
-  train_loader = DataLoader(train_dataset, num_workers=8, shuffle=False, pin_memory=True,
-      collate_fn=collate_fn, batch_sampler=train_sampler)
+
+  num_workers = 5 if multiprocessing.cpu_count() > 4 else multiprocessing.cpu_count()
+
+  train_loader = DataLoader(train_dataset, num_workers=num_workers, shuffle=False, pin_memory=True,
+      collate_fn=collate_fn) # batch_sampler=train_sampler)
   if rank == 0:
     eval_dataset = TextAudioSpeakerLoader(hps.data.validation_files, hps)
-    eval_loader = DataLoader(eval_dataset, num_workers=8, shuffle=True,
+    eval_loader = DataLoader(eval_dataset, num_workers=1, shuffle=True,
         batch_size=1, pin_memory=False,
         drop_last=False)
   
