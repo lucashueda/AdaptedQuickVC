@@ -15,11 +15,11 @@ from torch.cuda.amp import autocast, GradScaler
 from pqmf import PQMF
 
 import commons
-import utils
+import qvc_utils as utils
 
-from data_utils_new_new import (
+from data_utils import (
   TextAudioSpeakerLoader,
-  TextAudioSpeakerCollate,
+  TextAudioCollate,
   DistributedBucketSampler
 )
 from models import (
@@ -76,7 +76,7 @@ def run(rank, n_gpus, hps):
       num_replicas=n_gpus,
       rank=rank,
       shuffle=True)
-  collate_fn = TextAudioSpeakerCollate(hps)
+  collate_fn = TextAudioCollate(hps)
   train_loader = DataLoader(train_dataset, num_workers=8, shuffle=False, pin_memory=True,
       collate_fn=collate_fn, batch_sampler=train_sampler)
   if rank == 0:
@@ -140,51 +140,49 @@ def train_and_evaluate(rank, epoch, hps, nets, optims, schedulers, scaler, loade
 
   net_g.train()
   net_d.train()
-  for batch_idx, (c, spec, y) in enumerate(train_loader):
-    g = None
+  for batch_idx, items in enumerate(train_loader):
+    c, f0, spec, y, spk, lengths, uv, energy = items
+
+    g = spk.cuda(rank, non_blocking=True)
     spec, y = spec.cuda(rank, non_blocking=True), y.cuda(rank, non_blocking=True)
-    
     c = c.cuda(rank, non_blocking=True)
+    f0 = f0.cuda(rank, non_blocking=True)
+    uv = uv.cuda(rank, non_blocking=True)
+    energy = energy.cuda(rank, non_blocking=True)
+    lengths = lengths.cuda(rank, non_blocking=True)
     mel = spec_to_mel_torch(
-          spec, 
-          hps.data.filter_length, 
-          hps.data.n_mel_channels, 
-          hps.data.sampling_rate,
-          hps.data.mel_fmin, 
-          hps.data.mel_fmax)
+        spec,
+        hps.data.filter_length,
+        hps.data.n_mel_channels,
+        hps.data.sampling_rate,
+        hps.data.mel_fmin,
+        hps.data.mel_fmax)
 
 
     with autocast(enabled=hps.train.fp16_run):
-      #print(c.size())
-      y_hat, y_hat_mb, ids_slice, z_mask,\
-      (z, z_p, m_p, logs_p, m_q, logs_q) = net_g(c, spec, g=g, mel=mel)
- 
-      mel = spec_to_mel_torch(
-          spec, 
-          hps.data.filter_length, 
-          hps.data.n_mel_channels, 
-          hps.data.sampling_rate,
-          hps.data.mel_fmin, 
-          hps.data.mel_fmax)
-      y_mel = commons.slice_segments(mel, ids_slice, hps.train.segment_size // hps.data.hop_length)
-      y_hat_mel = mel_spectrogram_torch(
-          y_hat.squeeze(1), 
-          hps.data.filter_length, 
-          hps.data.n_mel_channels, 
-          hps.data.sampling_rate, 
-          hps.data.hop_length, 
-          hps.data.win_length, 
-          hps.data.mel_fmin, 
-          hps.data.mel_fmax
-      )
-      tmp=max(tmp,y.size()[2])
-      tmp1=min(tmp1,y.size()[2])
-      y = commons.slice_segments(y, ids_slice * hps.data.hop_length, hps.train.segment_size) # slice 
+        y_hat, ids_slice, z_mask, \
+        (z, z_p, m_p, logs_p, m_q, logs_q) = net_g(c, f0, uv, spec, energy=energy, g=g, c_lengths=lengths, spec_lengths=lengths)
 
-      y_d_hat_r, y_d_hat_g, _, _ = net_d(y, y_hat.detach())
-      with autocast(enabled=False):
-        loss_disc, losses_disc_r, losses_disc_g = discriminator_loss(y_d_hat_r, y_d_hat_g)
-        loss_disc_all = loss_disc
+        y_mel = commons.slice_segments(mel, ids_slice, hps.train.segment_size // hps.data.hop_length)
+        y_hat_mel = mel_spectrogram_torch(
+            y_hat.squeeze(1),
+            hps.data.filter_length,
+            hps.data.n_mel_channels,
+            hps.data.sampling_rate,
+            hps.data.hop_length,
+            hps.data.win_length,
+            hps.data.mel_fmin,
+            hps.data.mel_fmax
+        )
+        y = commons.slice_segments(y, ids_slice * hps.data.hop_length, hps.train.segment_size)  # slice
+
+        # Discriminator
+        y_d_hat_r, y_d_hat_g, _, _ = net_d(y, y_hat.detach())
+
+        with autocast(enabled=False):
+          loss_disc, losses_disc_r, losses_disc_g = discriminator_loss(y_d_hat_r, y_d_hat_g)
+          loss_disc_all = loss_disc
+
     optim_d.zero_grad()
     scaler.scale(loss_disc_all).backward()
     scaler.unscale_(optim_d)
@@ -262,57 +260,46 @@ def train_and_evaluate(rank, epoch, hps, nets, optims, schedulers, scaler, loade
 
  
 def evaluate(hps, generator, eval_loader, writer_eval):
-    generator.eval()
-    with torch.no_grad():
-      for batch_idx, (c, spec, y) in enumerate(eval_loader):
-        g = None
-        spec, y = spec[:1].cuda(0), y[:1].cuda(0)
-        c = c[:1].cuda(0)
-
-        break
+  generator.eval()
+  image_dict = {}
+  audio_dict = {}
+  with torch.no_grad():
+    for batch_idx, items in enumerate(eval_loader):
+      c, f0, spec, y, spk, _, uv, energy = items
+      g = spk[:1].cuda(0)
+      spec, y = spec[:1].cuda(0), y[:1].cuda(0)
+      c = c[:1].cuda(0)
+      f0 = f0[:1].cuda(0)
+      energy = energy[:1].cuda(0)
+      uv= uv[:1].cuda(0)
       mel = spec_to_mel_torch(
-        spec, 
-        hps.data.filter_length, 
-        hps.data.n_mel_channels, 
-        hps.data.sampling_rate,
-        hps.data.mel_fmin, 
-        hps.data.mel_fmax)
-      #y_hat, y_hat_mb, attn, mask, *_ = generator.module.infer(x, x_lengths, max_len=1000)
-      #y_hat_lengths = mask.sum([1,2]).long() * hps.data.hop_length
-      y_hat = generator.module.infer(c, g=g, mel=mel)
-      mel = spec_to_mel_torch(
-          spec, 
-          hps.data.filter_length, 
-          hps.data.n_mel_channels, 
+          spec,
+          hps.data.filter_length,
+          hps.data.n_mel_channels,
           hps.data.sampling_rate,
-          hps.data.mel_fmin, 
+          hps.data.mel_fmin,
           hps.data.mel_fmax)
+      y_hat = generator.module.infer(c, f0, uv, energy = energy, g=g)
+
       y_hat_mel = mel_spectrogram_torch(
-        y_hat.squeeze(1).float(),
-        hps.data.filter_length,
-        hps.data.n_mel_channels,
-        hps.data.sampling_rate,
-        hps.data.hop_length,
-        hps.data.win_length,
-        hps.data.mel_fmin,
-        hps.data.mel_fmax
+          y_hat.squeeze(1).float(),
+          hps.data.filter_length,
+          hps.data.n_mel_channels,
+          hps.data.sampling_rate,
+          hps.data.hop_length,
+          hps.data.win_length,
+          hps.data.mel_fmin,
+          hps.data.mel_fmax
       )
-    image_dict = {
-      "gen/mel": utils.plot_spectrogram_to_numpy(y_hat_mel[0].cpu().numpy()),
-      "gt/mel": utils.plot_spectrogram_to_numpy(mel[0].cpu().numpy())
-    }
-    audio_dict = {
-      "gen/audio": y_hat[0],
-      "gt/audio": y[0]
-    }
 
-    import torchaudio
-    y_gt=y*32768
-    print(y_hat.size())
-    torchaudio.save("temp_result/vctkms_new_tem_result_{}.wav".format(global_step),y_hat[0, :, :].cpu(),16000)
-    torchaudio.save("temp_result/vctkms_new_tem_result_gt_{}.wav".format(global_step),y[0, :, :].cpu(),16000)
-    #torchaudio.save("tem_result_gt32768_{}.wav".format(global_step),y_gt[0, :, :].cpu(),16000)
-
+      audio_dict.update({
+          f"gen/audio_{batch_idx}": y_hat[0],
+          f"gt/audio_{batch_idx}": y[0]
+      })
+    image_dict.update({
+        f"gen/mel": utils.plot_spectrogram_to_numpy(y_hat_mel[0].cpu().numpy()),
+        "gt/mel": utils.plot_spectrogram_to_numpy(mel[0].cpu().numpy())
+    })
     utils.summarize(
       writer=writer_eval,
       global_step=global_step, 
