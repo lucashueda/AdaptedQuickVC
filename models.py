@@ -733,7 +733,7 @@ class Multistream_iSTFT_Generator(torch.nn.Module):
       stft = TorchSTFT(filter_length=self.gen_istft_n_fft, hop_length=self.gen_istft_hop_size, win_length=self.gen_istft_n_fft).to(x.device)
       # pqmf = PQMF(x.device)
 
-      print(x.shape, f0.shape,energy.shape)
+      # print(x.shape, f0.shape,energy.shape)
 
       energy = torch.clamp(energy, min=0)
 
@@ -753,8 +753,13 @@ class Multistream_iSTFT_Generator(torch.nn.Module):
       har_source, noi_source, uv = self.m_source(f0)
       har_source = har_source.transpose(1, 2) # bs, 1, L_upsampled
       # print(f'f0 #3 shape = {har_source.shape}')
-      
+
+      print(energy.shape, har_source.shape)
+
       x = self.conv_pre(x)
+
+      print(x.shape)
+
       #print(x.size(),g.size())
       if(self.use_energy_convs):
           x = x + self.cond(g)
@@ -768,6 +773,8 @@ class Multistream_iSTFT_Generator(torch.nn.Module):
           #print(x.size(),g.size())
           x = self.ups[i](x)
           
+          print(x.shape)
+
           x_source = self.noise_convs[i](har_source)
 
           if(self.use_energy_convs):
