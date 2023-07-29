@@ -54,7 +54,8 @@ def encode_dataset(args):
 
             c_path = out_path + '.soft.pt'
             if not os.path.exists(c_path):
-                wav16k = resample(wav, sr, 16000)
+                wav_, sr = torchaudio.load(w_path)
+                wav16k = resample(wav_, sr, 16000)
                 wav16k = wav.unsqueeze(0).cuda()
 
                 with torch.inference_mode():
