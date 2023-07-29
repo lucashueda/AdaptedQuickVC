@@ -35,8 +35,8 @@ def encode_dataset(args):
     print(f"Processing {len(os.listdir(args.in_dir))} files at {args.in_dir}")
     for in_path in tqdm(os.listdir(args.in_dir)):
         if(args.extension in in_path):
-            in_path = os.path.join(args.in_dir, in_path)
             out_path = os.path.join(args.out_dir, in_path)
+            in_path = os.path.join(args.in_dir, in_path)
 
             w_path = out_path 
             wav, sr = librosa.load(in_path, sr=None)
