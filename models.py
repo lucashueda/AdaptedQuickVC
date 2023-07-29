@@ -754,11 +754,11 @@ class Multistream_iSTFT_Generator(torch.nn.Module):
       har_source = har_source.transpose(1, 2) # bs, 1, L_upsampled
       # print(f'f0 #3 shape = {har_source.shape}')
 
-      print(energy.shape, har_source.shape)
+      # print(energy.shape, har_source.shape)
 
       x = self.conv_pre(x)
 
-      print(x.shape)
+      # print(x.shape)
 
       #print(x.size(),g.size())
       if(self.use_energy_convs):
@@ -773,14 +773,14 @@ class Multistream_iSTFT_Generator(torch.nn.Module):
           #print(x.size(),g.size())
           x = self.ups[i](x)
           
-          print(x.shape)
+          # print(x.shape)
 
           x_source = self.noise_convs[i](har_source)
 
           if(self.use_energy_convs):
               x_energy = self.energy_noise_convs[i](energy)
 
-              print(x.shape, x_source.shape, x_energy.shape)
+              # print(x.shape, x_source.shape, x_energy.shape)
               x = x + x_source + x_energy
           # print(f"iter {i} shape = {x_energy.shape}")
           # print(4,x_source.shape,har_source.shape,x.shape, x_energy.shape, energy.shape)
