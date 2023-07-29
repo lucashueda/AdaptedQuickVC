@@ -1102,7 +1102,7 @@ class SynthesizerTrn(nn.Module):
     if(self.energy_agg_type == 'one_step'):
         energy_ = energy_to_coarse(energy, self.use_local_max)
 
-    o = self.dec(z * c_mask, g=g, f0=f0, energy=energy_)
+    o, o_mb = self.dec(z * c_mask, g=g, f0=f0, energy=energy_)
     return o
   
 
