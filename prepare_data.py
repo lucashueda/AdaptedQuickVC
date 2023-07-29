@@ -22,7 +22,7 @@ def encode_dataset(args):
     if(not os.path.isdir(args.out_dir)):
         os.mkdir(args.out_dir)
     else:
-        print(f"out dir path = "{args.out_dir}" already exists, processing can generate errors!")
+        print(f"""out dir path = "{args.out_dir}" already exists, processing can generate errors!""")
     
     sampling_rate = args.config.data['sampling_rate']
     hop_length = args.config.data['hop_length']
