@@ -29,8 +29,8 @@ def encode_dataset(args):
         data = f.read()
     config = json.loads(data)
 
-    sampling_rate = config.data['sampling_rate']
-    hop_length = config.data['hop_length']
+    sampling_rate = config['data']['sampling_rate']
+    hop_length = config['data']['hop_length']
 
     print(f"Processing {len(os.listdir(args.in_dir))} files at {args.in_dir}")
     for in_path in tqdm(os.listdir(args.in_dir)):
