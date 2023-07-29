@@ -1070,9 +1070,9 @@ class SynthesizerTrn(nn.Module):
         energy_ = energy_to_coarse(energy_slice, self.use_local_max)
 
     # nsf decoder
-    o = self.dec(z_slice, g=g, f0=pitch_slice, energy = energy_)
+    o, o_mb  = self.dec(z_slice, g=g, f0=pitch_slice, energy = energy_)
 
-    return o, ids_slice, spec_mask, (z, z_p, m_p, logs_p, m_q, logs_q)
+    return o, o_mb , ids_slice, spec_mask, (z, z_p, m_p, logs_p, m_q, logs_q)
 
   def infer(self, c, f0, uv, energy = None, g=None, noice_scale=0.35):
     c_lengths = (torch.ones(c.size(0)) * c.size(-1)).to(c.device)
