@@ -1073,9 +1073,9 @@ class SynthesizerTrn(nn.Module):
     # flow
     z_p = self.flow(z, spec_mask, g=g)
 
-    print(z.shape, f0.shape, energy.shape, self.segment_size)
+    # print(z.shape, f0.shape, energy.shape, self.segment_size)
     z_slice, pitch_slice, energy_slice, ids_slice = commons.rand_slice_segments_with_pitch_and_energy(z, f0, energy, spec_lengths, self.segment_size)
-    print(z_slice.shape, pitch_slice.shape, energy_slice.shape, self.segment_size)
+    # print(z_slice.shape, pitch_slice.shape, energy_slice.shape, self.segment_size)
     if(self.energy_use_log):
         energy_ = torch.log10(energy_slice)
     

@@ -85,9 +85,9 @@ def run(rank, n_gpus, hps):
       collate_fn=collate_fn) # batch_sampler=train_sampler)
   if rank == 0:
     eval_dataset = TextAudioSpeakerLoader(hps.data.validation_files, hps)
-    eval_loader = DataLoader(eval_dataset, num_workers=1, shuffle=True,
+    eval_loader = DataLoader(eval_dataset, num_workers=1, shuffle=False,
         batch_size=1, pin_memory=False,
-        drop_last=False)
+        drop_last=False, collate_fn=collate_fn)
   
   net_g = SynthesizerTrn(
       hps.data.filter_length // 2 + 1,
