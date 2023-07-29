@@ -682,7 +682,7 @@ class Multistream_iSTFT_Generator(torch.nn.Module):
             
             self.ups.append(weight_norm(
                 ConvTranspose1d(upsample_initial_channel//(2**i), upsample_initial_channel//(2**(i+1)),
-                                k, u, padding=(k-u+1-i)//2,output_padding=1-i)))
+                                k, u, padding=(k-u)//2)))
             
             if i + 1 < len(upsample_rates):  #
                 stride_f0 = np.prod(upsample_rates[i + 1:])# Same for energy
