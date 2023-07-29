@@ -733,6 +733,8 @@ class Multistream_iSTFT_Generator(torch.nn.Module):
       stft = TorchSTFT(filter_length=self.gen_istft_n_fft, hop_length=self.gen_istft_hop_size, win_length=self.gen_istft_n_fft).to(x.device)
       # pqmf = PQMF(x.device)
 
+      print(x.shape, f0.shape,energy.shape)
+
       energy = torch.clamp(energy, min=0)
 
       f0 = self.f0_upsamp(f0[:, None]).transpose(1, 2)  # bs,L_upsampled,1
