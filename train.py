@@ -164,7 +164,7 @@ def train_and_evaluate(rank, epoch, hps, nets, optims, schedulers, scaler, loade
 
 
     with autocast(enabled=hps.train.fp16_run):
-        y_hat, ids_slice, z_mask, \
+        y_hat, y_hat_mb, ids_slice, z_mask, \
         (z, z_p, m_p, logs_p, m_q, logs_q) = net_g(c, f0, uv, spec, energy=energy, g=g, c_lengths=lengths, spec_lengths=lengths)
 
         print(y_hat)
