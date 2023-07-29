@@ -167,6 +167,8 @@ def train_and_evaluate(rank, epoch, hps, nets, optims, schedulers, scaler, loade
         y_hat, ids_slice, z_mask, \
         (z, z_p, m_p, logs_p, m_q, logs_q) = net_g(c, f0, uv, spec, energy=energy, g=g, c_lengths=lengths, spec_lengths=lengths)
 
+        print(y_hat)
+
         y_mel = commons.slice_segments(mel, ids_slice, hps.train.segment_size // hps.data.hop_length)
         y_hat_mel = mel_spectrogram_torch(
             y_hat.squeeze(1),
