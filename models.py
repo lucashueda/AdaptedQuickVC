@@ -988,6 +988,7 @@ class SynthesizerTrn(nn.Module):
     subbands = False,
     istft_vits=False,
     sampling_rate=44100,
+    # use_energy = False,
     use_local_max = False,
     energy_use_log = False,
     energy_agg_type = 'one_step', 
@@ -996,6 +997,7 @@ class SynthesizerTrn(nn.Module):
 
     super().__init__()
 
+    # self.use_energy = use_energy
     self.use_local_max = use_local_max
     self.energy_use_log = energy_use_log
     self.energy_agg_type = energy_agg_type
