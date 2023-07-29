@@ -13,6 +13,7 @@ import qvc_utils
 import torch
 import torchaudio
 from torchaudio.functional import resample
+import json
 
 def encode_dataset(args):
     print(f"Loading hubert checkpoint")
@@ -24,8 +25,12 @@ def encode_dataset(args):
     else:
         print(f"""out dir path = "{args.out_dir}" already exists, processing can generate errors!""")
     
-    sampling_rate = args.config.data['sampling_rate']
-    hop_length = args.config.data['hop_length']
+    with open(args.config, "r") as f:
+        data = f.read()
+    config = json.loads(data)
+
+    sampling_rate = config.data['sampling_rate']
+    hop_length = config.data['hop_length']
 
     print(f"Processing {len(os.listdir(args.in_dir))} files at {args.in_dir}")
     for in_path in tqdm(os.listdir(args.in_dir)):
