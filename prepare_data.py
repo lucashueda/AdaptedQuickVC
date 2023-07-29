@@ -79,7 +79,8 @@ def encode_dataset(args):
     test = []
     wavs = []
     for wav_file in tqdm(os.listdir(args.out_dir)):
-        wavs.append(os.path.join(args.out_dir, wav_file))
+        if(wav_file[-3:] == 'wav'):
+            wavs.append(os.path.join(args.out_dir, wav_file))
 
     shuffle(wavs)
     train += wavs[2:-2]
