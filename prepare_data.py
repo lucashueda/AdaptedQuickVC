@@ -56,7 +56,7 @@ def encode_dataset(args):
             if not os.path.exists(c_path):
                 wav_, sr = torchaudio.load(w_path)
                 wav16k = resample(wav_, sr, 16000)
-                wav16k = wav.unsqueeze(0).cuda()
+                wav16k = wav16k.unsqueeze(0).cuda()
 
                 with torch.inference_mode():
                     units = hubert.units(wav16k)
