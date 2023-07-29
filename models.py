@@ -456,6 +456,10 @@ class Multiband_iSTFT_Generator(torch.nn.Module):
       for l in self.resblocks:
           l.remove_weight_norm()
 
+
+def padDiff(x):
+    return F.pad(F.pad(x, (0,0,-1,1), 'constant', 0) - x, (0,0,0,-1), 'constant', 0)
+
 class SineGen(torch.nn.Module):
     """ Definition of sine generator
     SineGen(samp_rate, harmonic_num = 0,
@@ -1045,9 +1049,9 @@ class SynthesizerTrn(nn.Module):
     # ssl prenet
     x_mask = torch.unsqueeze(commons.sequence_mask(c_lengths, c.size(2)), 1).to(c.dtype)
 
-    print(self.pre, self.emb_uv)
-    print(c.shape, uv.shape)
-    print(self.pre(c).shape, self.emb_uv(uv.long()).shape)
+    # print(self.pre, self.emb_uv)
+    # print(c.shape, uv.shape)
+    # print(self.pre(c).shape, self.emb_uv(uv.long()).shape)
 
     x = self.pre(c) * x_mask + self.emb_uv(uv.long()).transpose(1,2)
 
