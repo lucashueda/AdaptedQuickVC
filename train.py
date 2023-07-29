@@ -163,7 +163,7 @@ def train_and_evaluate(rank, epoch, hps, nets, optims, schedulers, scaler, loade
         hps.data.mel_fmax)
     # print(mel.shape)
 
-    print(spec.shape)
+    print(spec.shape, mel.shape)
 
     with autocast(enabled=hps.train.fp16_run):
         y_hat, y_hat_mb, ids_slice, z_mask, \
