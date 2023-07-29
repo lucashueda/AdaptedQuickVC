@@ -1045,6 +1045,8 @@ class SynthesizerTrn(nn.Module):
     # ssl prenet
     x_mask = torch.unsqueeze(commons.sequence_mask(c_lengths, c.size(2)), 1).to(c.dtype)
 
+    print(self.pre, self.emb_uv)
+    print(c.shape, uv.shape)
     print(self.pre(c).shape, self.emb_uv(uv.long()).shape)
 
     x = self.pre(c) * x_mask + self.emb_uv(uv.long()).transpose(1,2)
