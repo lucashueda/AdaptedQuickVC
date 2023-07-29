@@ -770,6 +770,8 @@ class Multistream_iSTFT_Generator(torch.nn.Module):
 
           if(self.use_energy_convs):
               x_energy = self.energy_noise_convs[i](energy)
+
+              print(x.shape, x_source.shape, x_energy.shape)
               x = x + x_source + x_energy
           # print(f"iter {i} shape = {x_energy.shape}")
           # print(4,x_source.shape,har_source.shape,x.shape, x_energy.shape, energy.shape)
