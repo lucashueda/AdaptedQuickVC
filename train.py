@@ -163,20 +163,13 @@ def train_and_evaluate(rank, epoch, hps, nets, optims, schedulers, scaler, loade
         hps.data.mel_fmax)
     # print(mel.shape)
 
+    print(spec.shape)
+
     with autocast(enabled=hps.train.fp16_run):
         y_hat, y_hat_mb, ids_slice, z_mask, \
         (z, z_p, m_p, logs_p, m_q, logs_q) = net_g(c, f0, uv, spec, energy=energy, g=g, c_lengths=lengths, spec_lengths=lengths)
 
         print(y_hat.shape, ids_slice)
-
-        mel = spec_to_mel_torch(
-          spec,
-          hps.data.filter_length,
-          hps.data.n_mel_channels,
-          hps.data.sampling_rate,
-          hps.data.mel_fmin,
-          hps.data.mel_fmax)
-        # print(mel.shape)
 
         y_mel = commons.slice_segments(mel, ids_slice, hps.train.segment_size // hps.data.hop_length)
         y_hat_mel = mel_spectrogram_torch(
