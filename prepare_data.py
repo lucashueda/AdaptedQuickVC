@@ -9,7 +9,7 @@ from glob import glob
 import logging
 from random import shuffle
 from pathlib import Path
-import kvc_utils
+import qvc_utils
 import torch
 import torchaudio
 from torchaudio.functional import resample
@@ -59,12 +59,12 @@ def encode_dataset(args):
 
             f0_path = out_path + ".f0.npy"
             if not os.path.exists(f0_path):
-                f0 = kvc_utils.compute_f0_dio(wav2, sampling_rate=sampling_rate, hop_length=hop_length)
+                f0 = qvc_utils.compute_f0_dio(wav2, sampling_rate=sampling_rate, hop_length=hop_length)
                 np.save(f0_path, f0)
 
             energy_path = out_path + ".energy.npy"
             if not os.path.exists(energy_path):
-                energy = kvc_utils.compute_energy(wav2, sampling_rate=sampling_rate, hop_length=hop_length)
+                energy = qvc_utils.compute_energy(wav2, sampling_rate=sampling_rate, hop_length=hop_length)
                 np.save(energy_path, energy)
 
     print("Generating training files...")
