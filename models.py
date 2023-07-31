@@ -1088,7 +1088,7 @@ class SynthesizerTrn(nn.Module):
     z_slice, pitch_slice, energy_slice, ids_slice = commons.rand_slice_segments_with_pitch_and_energy(z, f0, energy, spec_lengths, self.segment_size)
     # print(z_slice.shape, pitch_slice.shape, energy_slice.shape, self.segment_size)
     if(self.energy_use_log):
-        energy_ = torch.log10(energy_slice)
+        energy_ = 20*torch.log10(energy_slice) #default by apple paper https://arxiv.org/pdf/2009.06775.pdf
     
     if(self.energy_type == 'quantized'):
         energy_ = energy_to_coarse(energy_slice, self.use_local_max, energy_max = self.energy_max)
@@ -1108,7 +1108,7 @@ class SynthesizerTrn(nn.Module):
     z = self.flow(z_p, c_mask, g=g, reverse=True)
 
     if(self.energy_use_log):
-        energy_ = torch.log10(energy)
+        energy_ = 20*torch.log10(energy) #default by apple paper https://arxiv.org/pdf/2009.06775.pdf
     
     if(self.energy_type == 'quantized'):
         energy_ = energy_to_coarse(energy, self.use_local_max, energy_max = self.energy_max)
