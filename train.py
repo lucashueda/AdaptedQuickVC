@@ -162,7 +162,7 @@ def train_and_evaluate(rank, epoch, hps, nets, optims, schedulers, scaler, loade
         hps.data.mel_fmin,
         hps.data.mel_fmax)
     
-    print(c.shape)
+    # print(c.shape)
 
     # print(spec.shape, mel.shape)
 
@@ -184,7 +184,7 @@ def train_and_evaluate(rank, epoch, hps, nets, optims, schedulers, scaler, loade
             hps.data.mel_fmax
         )
 
-        print(ids_slice, y.shape)
+        # print(ids_slice, y.shape)
         y = commons.slice_segments(y, ids_slice * hps.data.hop_length, hps.train.segment_size)  # slice
 
         # Discriminator
