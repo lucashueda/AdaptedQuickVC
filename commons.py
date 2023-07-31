@@ -48,7 +48,7 @@ def rand_gumbel_like(x):
 def slice_segments(x, ids_str, segment_size=4):
   ret = torch.zeros_like(x[:, :, :segment_size])
   for i in range(x.size(0)):
-    print(ids_str[i])
+    # print(ids_str[i])
     idx_str = ids_str[i]
     idx_end = idx_str + segment_size
     ret[i] = x[i, :, idx_str:idx_end]
@@ -87,7 +87,7 @@ def rand_slice_segments_with_pitch_and_energy(x, pitch, energy, x_lengths=None, 
   if x_lengths is None:
     x_lengths = t
   
-  print(x_lengths)
+  # print(x_lengths)
   ids_str_max = x_lengths - segment_size + 1
   ids_str = (torch.rand([b]).to(device=x.device) * ids_str_max).to(dtype=torch.long)
   ret = slice_segments(x, ids_str, segment_size)

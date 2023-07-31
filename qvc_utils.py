@@ -256,10 +256,10 @@ def f0_to_coarse(f0):
   return f0_coarse
 
 energy_bin = 256
-energy_min = 0
-energy_max = 400
+# energy_min = 0
+# energy_max = 400
 
-def energy_to_coarse(energy, use_local_max = False):
+def energy_to_coarse(energy, use_local_max = False, energy_max = 400, energy_min = 0):
   is_torch = isinstance(energy, torch.Tensor)
       
   energy = energy.clone() if is_torch else energy.copy()

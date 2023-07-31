@@ -734,7 +734,6 @@ class Multistream_iSTFT_Generator(torch.nn.Module):
       # pqmf = PQMF(x.device)
 
       # print(x.shape, f0.shape,energy.shape)
-
       energy = torch.clamp(energy, min=0)
 
       f0 = self.f0_upsamp(f0[:, None]).transpose(1, 2)  # bs,L_upsampled,1
@@ -993,11 +992,16 @@ class SynthesizerTrn(nn.Module):
     energy_use_log = False,
     energy_agg_type = 'one_step', 
     energy_linear_dim = 32,
+    use_energy = False,
+    energy_type = 'linear',
+    energy_max = 500,
     **kwargs):
 
     super().__init__()
 
-    # self.use_energy = use_energy
+    self.energy_max = energy_max
+    self.use_energy = use_energy
+    self.energy_type = energy_type
     self.use_local_max = use_local_max
     self.energy_use_log = energy_use_log
     self.energy_agg_type = energy_agg_type
@@ -1069,22 +1073,21 @@ class SynthesizerTrn(nn.Module):
     x = self.pre(c) * x_mask + self.emb_uv(uv.long()).transpose(1,2)
 
     # encoder
-    z_ptemp, m_p, logs_p, _ = self.enc_p(x, x_mask, f0=f0_to_coarse(f0), energy = energy_to_coarse(energy, self.use_local_max))
+    z_ptemp, m_p, logs_p, _ = self.enc_p(x, x_mask, f0=f0_to_coarse(f0), energy = energy_to_coarse(energy, self.use_local_max, energy_max = self.energy_max))
     z, m_q, logs_q, spec_mask = self.enc_q(spec, spec_lengths, g=g) 
 
     # flow
     z_p = self.flow(z, spec_mask, g=g)
-
     
 
-    print(z.shape, f0.shape, energy.shape, self.segment_size)
+    # print(z.shape, f0.shape, energy.shape, self.segment_size)
     z_slice, pitch_slice, energy_slice, ids_slice = commons.rand_slice_segments_with_pitch_and_energy(z, f0, energy, spec_lengths, self.segment_size)
     # print(z_slice.shape, pitch_slice.shape, energy_slice.shape, self.segment_size)
     if(self.energy_use_log):
         energy_ = torch.log10(energy_slice)
     
-    if(self.energy_agg_type == 'one_step'):
-        energy_ = energy_to_coarse(energy_slice, self.use_local_max)
+    if(self.energy_type == 'quantized'):
+        energy_ = energy_to_coarse(energy_slice, self.use_local_max, energy_max = self.energy_max)
 
     # nsf decoder
     o, o_mb  = self.dec(z_slice, g=g, f0=pitch_slice, energy = energy_)
@@ -1097,14 +1100,14 @@ class SynthesizerTrn(nn.Module):
     x_mask = torch.unsqueeze(commons.sequence_mask(c_lengths, c.size(2)), 1).to(c.dtype)
     x = self.pre(c) * x_mask + self.emb_uv(uv.long()).transpose(1,2)
 
-    z_p, m_p, logs_p, c_mask = self.enc_p(x, x_mask, f0=f0_to_coarse(f0), energy = energy_to_coarse(energy, self.use_local_max), noice_scale=noice_scale)
+    z_p, m_p, logs_p, c_mask = self.enc_p(x, x_mask, f0=f0_to_coarse(f0), energy = energy_to_coarse(energy, self.use_local_max, energy_max = self.energy_max), noice_scale=noice_scale)
     z = self.flow(z_p, c_mask, g=g, reverse=True)
 
     if(self.energy_use_log):
         energy_ = torch.log10(energy)
     
-    if(self.energy_agg_type == 'one_step'):
-        energy_ = energy_to_coarse(energy, self.use_local_max)
+    if(self.energy_type == 'quantized'):
+        energy_ = energy_to_coarse(energy, self.use_local_max, energy_max = self.energy_max)
 
     o, o_mb = self.dec(z * c_mask, g=g, f0=f0, energy=energy_)
     return o
