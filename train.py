@@ -161,7 +161,8 @@ def train_and_evaluate(rank, epoch, hps, nets, optims, schedulers, scaler, loade
         hps.data.sampling_rate,
         hps.data.mel_fmin,
         hps.data.mel_fmax)
-    # print(mel.shape)
+    
+    print(c.shape)
 
     # print(spec.shape, mel.shape)
 
