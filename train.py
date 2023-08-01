@@ -81,8 +81,10 @@ def run(rank, n_gpus, hps):
 
   num_workers = 5 if multiprocessing.cpu_count() > 4 else multiprocessing.cpu_count()
 
+  # train_loader = DataLoader(train_dataset, num_workers=num_workers, shuffle=True, pin_memory=True,
+  #     collate_fn=collate_fn, batch_size=hps.train.batch_size) # batch_sampler=train_sampler)
   train_loader = DataLoader(train_dataset, num_workers=num_workers, shuffle=True, pin_memory=True,
-      collate_fn=collate_fn, batch_size=hps.train.batch_size) # batch_sampler=train_sampler)
+      collate_fn=collate_fn, batch_sampler=train_sampler)
   if rank == 0:
     eval_dataset = TextAudioSpeakerLoader(hps.data.validation_files, hps)
     eval_loader = DataLoader(eval_dataset, num_workers=1, shuffle=False,
