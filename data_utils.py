@@ -190,6 +190,7 @@ class DistributedBucketSampler(torch.utils.data.distributed.DistributedSampler):
                 buckets[idx_bucket].append(i)
 
         for i in range(len(buckets) - 1, 0, -1):
+            print(len(buckets[i]))
             if len(buckets[i]) == 0:
                 buckets.pop(i)
                 self.boundaries.pop(i+1)
@@ -201,7 +202,7 @@ class DistributedBucketSampler(torch.utils.data.distributed.DistributedSampler):
             rem = (total_batch_size - (len_bucket % total_batch_size)) % total_batch_size
             num_samples_per_bucket.append(len_bucket + rem)
 
-            print(f'bucket {i} len = {len_bucket}') 
+            # print(f'bucket {i} len = {len_bucket}') 
         return buckets, num_samples_per_bucket
 
     def __iter__(self):
@@ -227,7 +228,7 @@ class DistributedBucketSampler(torch.utils.data.distributed.DistributedSampler):
           # add extra samples to make it evenly divisible
           
           rem = num_samples_bucket - len_bucket
-          print(len_bucket, rem)
+        #   print(len_bucket, rem)
           ids_bucket = ids_bucket + ids_bucket * (rem // len_bucket) + ids_bucket[:(rem % len_bucket)]
 
           # subsample
