@@ -647,19 +647,20 @@ class Multistream_iSTFT_Generator(torch.nn.Module):
         self.energy_linear_dim = energy_linear_dim
 
         ## Energy args
-        if(energy_agg_type == 'one_step'):
-            self.energy_emb = nn.Embedding(256, upsample_initial_channel)
-        elif(energy_agg_type == 'all_step'):
-            self.energy_noise_convs = nn.ModuleList()
-            if(energy_linear_dim == 1):
-                print('Using raw energy!')
-                self.energy_emb = None
+        if(self.use_energy):
+            if(energy_agg_type == 'one_step'):
+                self.energy_emb = nn.Embedding(256, upsample_initial_channel)
+            elif(energy_agg_type == 'all_step'):
+                self.energy_noise_convs = nn.ModuleList()
+                if(energy_linear_dim == 1):
+                    print('Using raw energy!')
+                    self.energy_emb = None
+                else:
+                    self.energy_emb = nn.Linear(1, energy_linear_dim)
+                self.use_energy_convs = True 
             else:
-                self.energy_emb = nn.Linear(1, energy_linear_dim)
-            self.use_energy_convs = True 
-        else:
-            print(f'''energy_agg_type = {energy_agg_type} does not exit.''')
-        ## End energy args
+                print(f'''energy_agg_type = {energy_agg_type} does not exit.''')
+            ## End energy args
 
 
         self.subbands = subbands
@@ -669,7 +670,8 @@ class Multistream_iSTFT_Generator(torch.nn.Module):
         resblock = modules.ResBlock1 if resblock == '1' else modules.ResBlock2
 
         self.f0_upsamp = torch.nn.Upsample(scale_factor=np.prod(upsample_rates))
-        self.energy_upsamp = torch.nn.Upsample(scale_factor=np.prod(upsample_rates))
+        if(self.use_energy):
+            self.energy_upsamp = torch.nn.Upsample(scale_factor=np.prod(upsample_rates))
         self.m_source = SourceModuleHnNSF(
             sampling_rate=sampling_rate,
             harmonic_num=8)
@@ -690,12 +692,14 @@ class Multistream_iSTFT_Generator(torch.nn.Module):
                 self.noise_convs.append(Conv1d(
                     1, c_cur, kernel_size=stride_f0 * 2, stride=stride_f0, padding=stride_f0 // 2))
                 
-                if(energy_agg_type == 'all_step'):
-                    self.energy_noise_convs.append(Conv1d(energy_linear_dim, c_cur, kernel_size=stride_f0 * 2, stride=stride_f0, padding=stride_f0 // 2))
+                if(self.use_energy):
+                    if(energy_agg_type == 'all_step'):
+                        self.energy_noise_convs.append(Conv1d(energy_linear_dim, c_cur, kernel_size=stride_f0 * 2, stride=stride_f0, padding=stride_f0 // 2))
             else:
                 self.noise_convs.append(Conv1d(1, c_cur, kernel_size=1))
-                if(energy_agg_type == 'all_step'):
-                    self.energy_noise_convs.append(Conv1d(energy_linear_dim, c_cur, kernel_size=1))
+                if(self.use_energy):
+                    if(energy_agg_type == 'all_step'):
+                        self.energy_noise_convs.append(Conv1d(energy_linear_dim, c_cur, kernel_size=1))
 
 
         self.resblocks = nn.ModuleList()
