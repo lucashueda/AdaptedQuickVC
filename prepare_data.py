@@ -61,16 +61,21 @@ def encode_dataset(args):
 
             c_path = out_path + '.soft.pt'
             if not os.path.exists(c_path):
-                wav_, sr = torchaudio.load(w_path)
-                wav16k = resample(wav_, sr, 16000)
-                wav16k = wav16k.cuda()
-
                 if(args.voice_encoder== 'softvc'):
+                    wav_, sr = torchaudio.load(w_path)
+                    wav16k = resample(wav_, sr, 16000)
+                    wav16k = wav16k.cuda()
+
                     with torch.inference_mode():
                         units = hmodel.units(wav16k.unsqueeze(0))
 
                     torch.save(units.permute(0,2,1).cpu(), c_path)
+
                 elif(args.voice_encoder== 'contentvec'):
+                    wav, sr = librosa.load(w_path, sr=sampling_rate)
+                    devive = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+                    wav16k = librosa.resample(wav, orig_sr=sampling_rate, target_sr=16000)
+                    wav16k = torch.from_numpy(wav16k).to(devive)
                     c = qvc_utils.get_hubert_content(hmodel, wav_16k_tensor=wav16k, 
                             legacy_final_proj=config['data']["contentvec_final_proj"])
                     torch.save(c.cpu(), c_path)
