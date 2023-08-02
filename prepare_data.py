@@ -70,7 +70,7 @@ def encode_dataset(args):
                         units = hmodel.units(wav16k)
 
                     torch.save(units.permute(0,2,1).cpu(), c_path)
-                elif(args.voice_encoder== 'contentvec')
+                elif(args.voice_encoder== 'contentvec'):
                     c = qvc_utils.get_hubert_content(hmodel, wav_16k_tensor=wav16k, 
                             legacy_final_proj=config.data.get("contentvec_final_proj", True))
                     torch.save(c.cpu(), c_path)

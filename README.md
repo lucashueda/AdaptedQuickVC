@@ -11,6 +11,9 @@ Put pretrained model into logs/quickvc
 python convert.py
 ```
 You can change convert.txt to select the target and source
+
+if you want Contentvec download it and put in venv/ : [checkpoint_best_legacy_500.pt](https://huggingface.co/lucashueda/venc_checkpoints/resolve/main/checkpoint_best_legacy_500.pt)
+
 ## Preprocess
 1. Hubert-Soft
 ```python
