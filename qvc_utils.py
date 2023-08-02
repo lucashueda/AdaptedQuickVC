@@ -277,7 +277,7 @@ def energy_to_coarse(energy, use_local_max = False, energy_max = 400, energy_min
   return energy_coarse
 
 def get_hubert_model(quiet=False):
-  vec_path = "hubert/checkpoint_best_legacy_500.pt"
+  vec_path = "venc/checkpoint_best_legacy_500.pt"
   if not quiet:
       print("load model(s) from {}".format(vec_path))
   from fairseq import checkpoint_utils
