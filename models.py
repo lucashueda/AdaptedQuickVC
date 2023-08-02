@@ -1132,7 +1132,7 @@ class SynthesizerTrn(nn.Module):
     if(self.use_energy):
         z_p, m_p, logs_p, c_mask = self.enc_p(x, x_mask, f0=f0_to_coarse(f0), energy = energy_to_coarse(energy, self.use_local_max, energy_max = self.energy_max), noice_scale=noice_scale)
     else:
-        z_ptemp, m_p, logs_p, _ = self.enc_p(x, x_mask, f0=f0_to_coarse(f0), noice_scale=noice_scale)
+        z_p, m_p, logs_p, c_mask = self.enc_p(x, x_mask, f0=f0_to_coarse(f0), noice_scale=noice_scale)
 
     z = self.flow(z_p, c_mask, g=g, reverse=True)
 
