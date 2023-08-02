@@ -72,7 +72,7 @@ def encode_dataset(args):
                     torch.save(units.permute(0,2,1).cpu(), c_path)
                 elif(args.voice_encoder== 'contentvec'):
                     c = qvc_utils.get_hubert_content(hmodel, wav_16k_tensor=wav16k, 
-                            legacy_final_proj=config.data.get("contentvec_final_proj", True))
+                            legacy_final_proj=config['data']["contentvec_final_proj"])
                     torch.save(c.cpu(), c_path)
                 else:
                     print(f"Voice encoder = {args.voice_encoder} not implemented!")
