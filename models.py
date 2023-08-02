@@ -638,12 +638,12 @@ import numpy as np
 class Multistream_iSTFT_Generator(torch.nn.Module):
     def __init__(self, initial_channel, resblock, resblock_kernel_sizes, resblock_dilation_sizes, upsample_rates, 
                  upsample_initial_channel, upsample_kernel_sizes, gen_istft_n_fft, gen_istft_hop_size, subbands, 
-                 gin_channels, sampling_rate, energy_agg_type, energy_linear_dim):
+                 gin_channels, sampling_rate, energy_agg_type, energy_linear_dim, use_energy):
         super(Multistream_iSTFT_Generator, self).__init__()
         # self.h = h
 
         self.use_energy_convs = False # default value
-
+        self.use_energy = use_energy
         self.energy_linear_dim = energy_linear_dim
 
         ## Energy args
@@ -733,20 +733,22 @@ class Multistream_iSTFT_Generator(torch.nn.Module):
       stft = TorchSTFT(filter_length=self.gen_istft_n_fft, hop_length=self.gen_istft_hop_size, win_length=self.gen_istft_n_fft).to(x.device)
       # pqmf = PQMF(x.device)
 
+      if(self.use_energy):
       # print(x.shape, f0.shape,energy.shape)
-      energy = torch.clamp(energy, min=0)
+        energy = torch.clamp(energy, min=0)
 
       f0 = self.f0_upsamp(f0[:, None]).transpose(1, 2)  # bs,L_upsampled,1
 
-      if(self.use_energy_convs):
-          if(self.energy_linear_dim == 1):
-              energy = self.energy_upsamp(energy[:, None]) # bs,1, L_upsampled  
-          else:
-              energy = self.energy_emb(energy.unsqueeze(-1)) # bs,L,linear_dim
-              energy = self.energy_upsamp(energy.transpose(1, 2)) # bs, linear_dim, L_upsampled
+      if(self.use_energy):
+        if(self.use_energy_convs):
+            if(self.energy_linear_dim == 1):
+                energy = self.energy_upsamp(energy[:, None]) # bs,1, L_upsampled  
+            else:
+                energy = self.energy_emb(energy.unsqueeze(-1)) # bs,L,linear_dim
+                energy = self.energy_upsamp(energy.transpose(1, 2)) # bs, linear_dim, L_upsampled
 
-      else:
-          energy = self.energy_emb(energy)
+        else:
+            energy = self.energy_emb(energy)
 
 
       har_source, noi_source, uv = self.m_source(f0)
@@ -759,11 +761,14 @@ class Multistream_iSTFT_Generator(torch.nn.Module):
 
       # print(x.shape)
 
-      #print(x.size(),g.size())
-      if(self.use_energy_convs):
-          x = x + self.cond(g)
+      if(self.use_energy):
+        #print(x.size(),g.size())
+        if(self.use_energy_convs):
+            x = x + self.cond(g)
+        else:
+            x = x + self.cond(g) + energy.transpose(1,2)
       else:
-          x = x + self.cond(g) + energy.transpose(1,2)
+        x = x + self.cond(g)
     
       for i in range(self.num_upsamples):
 
@@ -776,13 +781,16 @@ class Multistream_iSTFT_Generator(torch.nn.Module):
 
           x_source = self.noise_convs[i](har_source)
 
-          if(self.use_energy_convs):
-              x_energy = self.energy_noise_convs[i](energy)
+          if(self.use_energy):
+            if(self.use_energy_convs):
+                x_energy = self.energy_noise_convs[i](energy)
 
-              # print(x.shape, x_source.shape, x_energy.shape)
-              x = x + x_source + x_energy
+                # print(x.shape, x_source.shape, x_energy.shape)
+                x = x + x_source + x_energy
           # print(f"iter {i} shape = {x_energy.shape}")
           # print(4,x_source.shape,har_source.shape,x.shape, x_energy.shape, energy.shape)
+            else:
+                x = x + x_source
           else:
               x = x + x_source
 
@@ -1039,9 +1047,21 @@ class SynthesizerTrn(nn.Module):
     self.emb_g = nn.Embedding(n_speakers, gin_channels)
     self.pre = nn.Conv1d(ssl_dim, hidden_channels, kernel_size=5, padding=2)
 
+
     self.use_sdp = use_sdp
 
-    self.enc_p = TextEncoder_energy(
+    if(self.use_energy):
+        self.enc_p = TextEncoder_energy(
+            inter_channels,
+            hidden_channels,
+            filter_channels=filter_channels,
+            n_heads=n_heads,
+            n_layers=n_layers,
+            kernel_size=kernel_size,
+            p_dropout=p_dropout
+        )
+    else:
+        self.enc_p = TextEncoder(
         inter_channels,
         hidden_channels,
         filter_channels=filter_channels,
@@ -1055,7 +1075,7 @@ class SynthesizerTrn(nn.Module):
     self.dec = Multistream_iSTFT_Generator(inter_channels, resblock, resblock_kernel_sizes, resblock_dilation_sizes, 
                                            upsample_rates, upsample_initial_channel, upsample_kernel_sizes, gen_istft_n_fft, 
                                            gen_istft_hop_size, subbands, gin_channels=gin_channels, sampling_rate = sampling_rate, 
-                                           energy_agg_type=energy_agg_type, energy_linear_dim=energy_linear_dim)
+                                           energy_agg_type=energy_agg_type, energy_linear_dim=energy_linear_dim, use_energy = self.use_energy)
 
     self.enc_q = Encoder(spec_channels, inter_channels, hidden_channels, 5, 1, 16, gin_channels=gin_channels)
 
@@ -1077,7 +1097,11 @@ class SynthesizerTrn(nn.Module):
     x = self.pre(c) * x_mask + self.emb_uv(uv.long()).transpose(1,2)
 
     # encoder
-    z_ptemp, m_p, logs_p, _ = self.enc_p(x, x_mask, f0=f0_to_coarse(f0), energy = energy_to_coarse(energy, self.use_local_max, energy_max = self.energy_max))
+    if(self.use_energy):
+        z_ptemp, m_p, logs_p, _ = self.enc_p(x, x_mask, f0=f0_to_coarse(f0), energy = energy_to_coarse(energy, self.use_local_max, energy_max = self.energy_max))
+    else:
+        z_ptemp, m_p, logs_p, _ = self.enc_p(x, x_mask, f0=f0_to_coarse(f0))
+    
     z, m_q, logs_q, spec_mask = self.enc_q(spec, spec_lengths, g=g) 
 
     # flow
@@ -1104,7 +1128,11 @@ class SynthesizerTrn(nn.Module):
     x_mask = torch.unsqueeze(commons.sequence_mask(c_lengths, c.size(2)), 1).to(c.dtype)
     x = self.pre(c) * x_mask + self.emb_uv(uv.long()).transpose(1,2)
 
-    z_p, m_p, logs_p, c_mask = self.enc_p(x, x_mask, f0=f0_to_coarse(f0), energy = energy_to_coarse(energy, self.use_local_max, energy_max = self.energy_max), noice_scale=noice_scale)
+    if(self.use_energy):
+        z_p, m_p, logs_p, c_mask = self.enc_p(x, x_mask, f0=f0_to_coarse(f0), energy = energy_to_coarse(energy, self.use_local_max, energy_max = self.energy_max), noice_scale=noice_scale)
+    else:
+        z_ptemp, m_p, logs_p, _ = self.enc_p(x, x_mask, f0=f0_to_coarse(f0), noice_scale=noice_scale)
+
     z = self.flow(z_p, c_mask, g=g, reverse=True)
 
     if(self.energy_use_log):
