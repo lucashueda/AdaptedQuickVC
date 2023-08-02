@@ -16,8 +16,15 @@ from torchaudio.functional import resample
 import json
 
 def encode_dataset(args):
-    print(f"Loading hubert checkpoint")
-    hubert = torch.hub.load("bshall/hubert:main", f"hubert_soft").cuda().eval()
+    if(args.voice_encoder == 'softvc'):
+        print(f"Loading SoftVC checkpoint")
+        hmodel = torch.hub.load("bshall/hubert:main", f"hubert_soft").cuda().eval()
+    elif(args.voice_encoder == 'contentvec'):
+        print(f"Loading ContentVec checkpoint")
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+        hmodel = qvc_utils.get_hubert_model().to(device)
+    else:
+        print(f"Voice encoder = {args.voice_encoder} not implemented!")
 
     print("Generating out_dir if not exist")
     if(not os.path.isdir(args.out_dir)):
@@ -58,10 +65,17 @@ def encode_dataset(args):
                 wav16k = resample(wav_, sr, 16000)
                 wav16k = wav16k.unsqueeze(0).cuda()
 
-                with torch.inference_mode():
-                    units = hubert.units(wav16k)
+                if(args.voice_encoder== 'softvc'):
+                    with torch.inference_mode():
+                        units = hmodel.units(wav16k)
 
-                torch.save(units.permute(0,2,1).cpu(), c_path)
+                    torch.save(units.permute(0,2,1).cpu(), c_path)
+                elif(args.voice_encoder== 'contentvec')
+                    c = qvc_utils.get_hubert_content(hmodel, wav_16k_tensor=wav16k, 
+                            legacy_final_proj=config.data.get("contentvec_final_proj", True))
+                    torch.save(c.cpu(), c_path)
+                else:
+                    print(f"Voice encoder = {args.voice_encoder} not implemented!")
 
             f0_path = out_path + ".f0.npy"
             if not os.path.exists(f0_path):
@@ -147,6 +161,12 @@ if __name__ == "__main__":
         type=str,
         default="./configs/quickvc.json",
         help='JSON file for configuration')
+    parser.add_argument(
+        '-venc',
+        '--voice_encoder',
+        type=str,
+        default="softvc",
+        help='Model to extract content representations')
     
     args = parser.parse_args()
     encode_dataset(args)
