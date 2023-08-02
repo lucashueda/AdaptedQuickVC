@@ -1015,6 +1015,7 @@ class SynthesizerTrn(nn.Module):
     self.energy_agg_type = energy_agg_type
     self.energy_linear_dim = energy_linear_dim
     print(f'''Running energy embedding:
+          \tusing energy = {self.use_energy}
           \tusing_local_max = {self.use_local_max}
           \tenergy_agg_type = {self.energy_agg_type}
           \tenergy_linear_dim = {self.energy_linear_dim}
