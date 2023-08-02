@@ -63,11 +63,11 @@ def encode_dataset(args):
             if not os.path.exists(c_path):
                 wav_, sr = torchaudio.load(w_path)
                 wav16k = resample(wav_, sr, 16000)
-                wav16k = wav16k.unsqueeze(0).cuda()
+                wav16k = wav16k.cuda()
 
                 if(args.voice_encoder== 'softvc'):
                     with torch.inference_mode():
-                        units = hmodel.units(wav16k)
+                        units = hmodel.units(wav16k.unsqueeze(0))
 
                     torch.save(units.permute(0,2,1).cpu(), c_path)
                 elif(args.voice_encoder== 'contentvec'):
