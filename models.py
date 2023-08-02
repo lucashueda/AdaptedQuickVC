@@ -1000,7 +1000,7 @@ class SynthesizerTrn(nn.Module):
     energy_use_log = False,
     energy_agg_type = 'one_step', 
     energy_linear_dim = 32,
-    use_energy = False,
+    use_energy = True,
     energy_type = 'linear',
     energy_max = 500,
     **kwargs):
