@@ -1107,7 +1107,7 @@ class SynthesizerTrn(nn.Module):
     else:
         z_ptemp, m_p, logs_p, _ = self.enc_p(x, x_mask, f0=f0_to_coarse(f0))
     
-    print(spec.shape, spec_lengths.shape)
+    # print(spec.shape, spec_lengths.shape)
     z, m_q, logs_q, spec_mask = self.enc_q(spec, spec_lengths, g=g) 
 
     # flow
