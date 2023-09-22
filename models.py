@@ -638,30 +638,9 @@ import numpy as np
 class Multistream_iSTFT_Generator(torch.nn.Module):
     def __init__(self, initial_channel, resblock, resblock_kernel_sizes, resblock_dilation_sizes, upsample_rates, 
                  upsample_initial_channel, upsample_kernel_sizes, gen_istft_n_fft, gen_istft_hop_size, subbands, 
-                 gin_channels, sampling_rate, energy_agg_type, energy_linear_dim, use_energy):
+                 gin_channels, sampling_rate):
         super(Multistream_iSTFT_Generator, self).__init__()
         # self.h = h
-
-        self.use_energy_convs = False # default value
-        self.use_energy = use_energy
-        self.energy_linear_dim = energy_linear_dim
-
-        ## Energy args
-        if(self.use_energy):
-            if(energy_agg_type == 'one_step'):
-                self.energy_emb = nn.Embedding(256, upsample_initial_channel)
-            elif(energy_agg_type == 'all_step'):
-                self.energy_noise_convs = nn.ModuleList()
-                if(energy_linear_dim == 1):
-                    print('Using raw energy!')
-                    self.energy_emb = None
-                else:
-                    self.energy_emb = nn.Linear(1, energy_linear_dim)
-                self.use_energy_convs = True 
-            else:
-                print(f'''energy_agg_type = {energy_agg_type} does not exit.''')
-            ## End energy args
-
 
         self.subbands = subbands
         self.num_kernels = len(resblock_kernel_sizes)
@@ -670,8 +649,7 @@ class Multistream_iSTFT_Generator(torch.nn.Module):
         resblock = modules.ResBlock1 if resblock == '1' else modules.ResBlock2
 
         self.f0_upsamp = torch.nn.Upsample(scale_factor=np.prod(upsample_rates))
-        if(self.use_energy):
-            self.energy_upsamp = torch.nn.Upsample(scale_factor=np.prod(upsample_rates))
+
         self.m_source = SourceModuleHnNSF(
             sampling_rate=sampling_rate,
             harmonic_num=8)
@@ -692,14 +670,8 @@ class Multistream_iSTFT_Generator(torch.nn.Module):
                 self.noise_convs.append(Conv1d(
                     1, c_cur, kernel_size=stride_f0 * 2, stride=stride_f0, padding=stride_f0 // 2))
                 
-                if(self.use_energy):
-                    if(energy_agg_type == 'all_step'):
-                        self.energy_noise_convs.append(Conv1d(energy_linear_dim, c_cur, kernel_size=stride_f0 * 2, stride=stride_f0, padding=stride_f0 // 2))
             else:
                 self.noise_convs.append(Conv1d(1, c_cur, kernel_size=1))
-                if(self.use_energy):
-                    if(energy_agg_type == 'all_step'):
-                        self.energy_noise_convs.append(Conv1d(energy_linear_dim, c_cur, kernel_size=1))
 
 
         self.resblocks = nn.ModuleList()
@@ -733,26 +705,12 @@ class Multistream_iSTFT_Generator(torch.nn.Module):
         # self.ups.apply(init_weights)
         # self.conv_post.apply(init_weights)
 
-    def forward(self, x, f0, energy, g=None):
+    def forward(self, x, f0, g=None):
       stft = TorchSTFT(filter_length=self.gen_istft_n_fft, hop_length=self.gen_istft_hop_size, win_length=self.gen_istft_n_fft).to(x.device)
       # pqmf = PQMF(x.device)
 
-      if(self.use_energy):
-      # print(x.shape, f0.shape,energy.shape)
-        energy = torch.clamp(energy, min=0)
 
       f0 = self.f0_upsamp(f0[:, None]).transpose(1, 2)  # bs,L_upsampled,1
-
-      if(self.use_energy):
-        if(self.use_energy_convs):
-            if(self.energy_linear_dim == 1):
-                energy = self.energy_upsamp(energy[:, None]) # bs,1, L_upsampled  
-            else:
-                energy = self.energy_emb(energy.unsqueeze(-1)) # bs,L,linear_dim
-                energy = self.energy_upsamp(energy.transpose(1, 2)) # bs, linear_dim, L_upsampled
-
-        else:
-            energy = self.energy_emb(energy)
 
 
       har_source, noi_source, uv = self.m_source(f0)
@@ -765,14 +723,8 @@ class Multistream_iSTFT_Generator(torch.nn.Module):
 
       # print(x.shape)
 
-      if(self.use_energy):
-        #print(x.size(),g.size())
-        if(self.use_energy_convs):
-            x = x + self.cond(g)
-        else:
-            x = x + self.cond(g) + energy.transpose(1,2)
-      else:
-        x = x + self.cond(g)
+
+      x = x + self.cond(g)
     
       for i in range(self.num_upsamples):
 
@@ -785,18 +737,7 @@ class Multistream_iSTFT_Generator(torch.nn.Module):
 
           x_source = self.noise_convs[i](har_source)
 
-          if(self.use_energy):
-            if(self.use_energy_convs):
-                x_energy = self.energy_noise_convs[i](energy)
-
-                # print(x.shape, x_source.shape, x_energy.shape)
-                x = x + x_source + x_energy
-          # print(f"iter {i} shape = {x_energy.shape}")
-          # print(4,x_source.shape,har_source.shape,x.shape, x_energy.shape, energy.shape)
-            else:
-                x = x + x_source
-          else:
-              x = x + x_source
+          x = x + x_source
 
           #print(x.size(),g.size())
           xs = None
@@ -1079,8 +1020,7 @@ class SynthesizerTrn(nn.Module):
 
     self.dec = Multistream_iSTFT_Generator(inter_channels, resblock, resblock_kernel_sizes, resblock_dilation_sizes, 
                                            upsample_rates, upsample_initial_channel, upsample_kernel_sizes, gen_istft_n_fft, 
-                                           gen_istft_hop_size, subbands, gin_channels=gin_channels, sampling_rate = sampling_rate, 
-                                           energy_agg_type=energy_agg_type, energy_linear_dim=energy_linear_dim, use_energy = self.use_energy)
+                                           gen_istft_hop_size, subbands, gin_channels=gin_channels, sampling_rate = sampling_rate)
 
     self.enc_q = Encoder(spec_channels, inter_channels, hidden_channels, 5, 1, 16, gin_channels=gin_channels)
 
@@ -1117,14 +1057,9 @@ class SynthesizerTrn(nn.Module):
     # print(z.shape, f0.shape, energy.shape, self.segment_size)
     z_slice, pitch_slice, energy_slice, ids_slice = commons.rand_slice_segments_with_pitch_and_energy(z, f0, energy, spec_lengths, self.segment_size)
     # print(z_slice.shape, pitch_slice.shape, energy_slice.shape, self.segment_size)
-    if(self.energy_use_log):
-        energy_ = torch.log10(energy_slice) #default by apple paper https://arxiv.org/pdf/2009.06775.pdf
-    
-    if(self.energy_type == 'quantized'):
-        energy_ = energy_to_coarse(energy_slice, self.use_local_max, energy_max = self.energy_max)
 
     # nsf decoder
-    o, o_mb  = self.dec(z_slice, g=g, f0=pitch_slice, energy = energy_)
+    o, o_mb  = self.dec(z_slice, g=g, f0=pitch_slice)
 
     return o, o_mb , ids_slice, spec_mask, (z, z_p, m_p, logs_p, m_q, logs_q)
 
@@ -1141,13 +1076,7 @@ class SynthesizerTrn(nn.Module):
 
     z = self.flow(z_p, c_mask, g=g, reverse=True)
 
-    if(self.energy_use_log):
-        energy_ = torch.log10(energy) #default by apple paper https://arxiv.org/pdf/2009.06775.pdf
-    
-    if(self.energy_type == 'quantized'):
-        energy_ = energy_to_coarse(energy, self.use_local_max, energy_max = self.energy_max)
-
-    o, o_mb = self.dec(z * c_mask, g=g, f0=f0, energy=energy_)
+    o, o_mb = self.dec(z * c_mask, g=g, f0=f0)
     return o
   
 
